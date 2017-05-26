@@ -483,6 +483,9 @@
   ?f <- (desire (strength ?s)(action ?act)(x ?x)(y ?y))
   (not (desire (strength ?s2&:(> ?s2 ?s))))
   (not (goal))
+  ; edge case: hunter could visit unsafe caves because desires that were added
+  ; before marking the cave as (safe FALSE) in evaluate stench/breeze
+  (or(cave (x ?x)(y ?y)(safe ~FALSE))(desire(action shoot))(desire(action pickupgold)))
   => 
  (retract ?f)
  (assert (goal (action ?act) (x ?x)(y ?y))))
