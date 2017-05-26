@@ -278,16 +278,22 @@
 
 (defrule evaluate-stench
   (task think) 
-  ?cave <- (adj ?x ?y ?x2 ?y2)
+  (cave (x ?x)(y ?y)(stench TRUE))
+  (adj ?x ?y ?x2 ?y2)
   ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN))
   =>
+  ; count all neighbours that could possibly contain a wumpus
+  ; this means that has-wumpus can be UNKNOWN, MAYBE or TRUE
   (if (=1 (count-query-results possibly-wumpus-contaminated-neighbours ?x ?y)) then
-        (modify ?f (safe FALSE)(has-wumpus TRUE)
-      	(printout t "With stench in (" ?x "," ?y "), evidently the wumpus is in (" ?x2  "," ?y2 ")." crlf))
+        ; if there's only one, the wumpus must be in location (x2,y2)
+      	(printout t "With stench in (" ?x "," ?y "), EVIDENTLY the wumpus is in (" ?x2  "," ?y2 ")." crlf)
+        (modify ?f (safe FALSE)(has-wumpus TRUE))
 	else
+        ; else if there's more than one
   		(if (=UNKNOWN (fact-slot-value ?f has-wumpus)) then
-            (modify ?f (has-wumpus MAYBE))
-            (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf))))
+            ; if has-wumpus is UNKNOWN, the wumpus may be in location (x2,y2)
+            (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf)
+            (modify ?f (has-wumpus MAYBE)))))
 
 (defrule evaluate-breeze-none
   (task think) 
@@ -295,7 +301,7 @@
   (adj ?x ?y ?x2 ?y2)
   ?f <- (cave (x ?x2)(y ?y2)(has-pit ~FALSE))
   =>
-  (printout t "There's no breeze in (" ?x "," ?y ") so there's no pit  in (" ?x2  "," ?y2 ")." crlf)
+  (printout t "There's no breeze in (" ?x "," ?y ") so there's no pit in (" ?x2  "," ?y2 ")." crlf)
   (modify ?f (has-pit FALSE)))
 
 (defrule evaluate-breeze
