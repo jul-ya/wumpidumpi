@@ -19,7 +19,7 @@
   (slot gold (default 0)(type INTEGER))
   (slot alive (default TRUE))
   (slot arrows (default 1)(type INTEGER))
-  (slot killed_wumpus (default 0)(type INTEGER)))
+  (slot killed_wumpus (default FALSE)))
 
 (deftemplate desire "a hunter's desires"
   (slot agent)
@@ -505,7 +505,7 @@
   (modify ?cave (has-gold FALSE)(glitter FALSE))
   (modify ?f2 (amount 0))) 
   
-  (defrule shoot
+ (defrule shoot
 	(task act)
     ?goal <- (goal (action shoot))  
     ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE))
@@ -513,13 +513,15 @@
     ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
     => 
     (if (> ?arrows 0) then
-    	(printout t "Shoot action. Wumpus in (" ?ax "," ?ay "). " ?wx","?wy" "?killed"" crlf)
+    	(printout t "Shoot action. Hunter in (" ?ax "," ?ay ") killed Wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
         (modify ?cave (has-wumpus FALSE))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
+        (modify ?wumpus (alive FALSE))
     else 
     	(printout t "Wanted to kill wumpus, but no arrows left." crlf)
-    ))
+    )
+)
 
 (defrule go-to-adjacent-cave
   "If our desire is to goto XY and were are in an adjacent cell,
