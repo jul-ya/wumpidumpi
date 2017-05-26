@@ -280,7 +280,9 @@
   (task think) 
   (cave (x ?x)(y ?y)(stench TRUE))
   (adj ?x ?y ?x2 ?y2)
-  ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN))
+  ; do this for every cave where has-wumpus is UNKNOWN or MAYBE
+  ; so the has-wumpus MAYBE can also turn true eventually
+  ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN|MAYBE))
   =>
   ; count all neighbours that could possibly contain a wumpus
   ; this means that has-wumpus can be UNKNOWN, MAYBE or TRUE
@@ -304,14 +306,31 @@
   (printout t "There's no breeze in (" ?x "," ?y ") so there's no pit in (" ?x2  "," ?y2 ")." crlf)
   (modify ?f (has-pit FALSE)))
 
+(defquery possibly-pit-packed-neighbours
+    (declare (variables ?gx ?gy))
+    (adj ?gx ?gy ?nx ?ny)
+    (cave (x ?nx)(y ?ny)(has-pit ~FALSE)))
+
 (defrule evaluate-breeze
   (task think) 
   (cave (x ?x)(y ?y)(breeze TRUE))
-  ?f <- (cave (x ?x2)(y ?y2)(has-pit UNKNOWN))
+  ; do this for every cave where has-pit is UNKNOWN or MAYBE
+  ; so the has-pit MAYBE can also turn true eventually
+  ?f <- (cave (x ?x2)(y ?y2)(has-pit UNKNOWN|MAYBE))
   (adj ?x ?y ?x2 ?y2)
   =>
-  (printout t "A breeze in (" ?x "," ?y "), so there may be a pit in (" ?x2  "," ?y2 ")." crlf)
-  (modify ?f (has-pit MAYBE)))
+  ; count all neighbours that could possibly contain a pit
+  ; this means that has-pit can be UNKNOWN, MAYBE or TRUE
+  (if (=1 (count-query-results possibly-pit-packed-neighbours ?x ?y)) then
+        ; if there's only one, a pit must be in location (x2,y2)
+      	(printout t "A breeze in (" ?x "," ?y "), so there is UNDOUBTEDLY a pit in (" ?x2  "," ?y2 ")." crlf)
+        (modify ?f (safe FALSE)(has-pit TRUE))
+	else
+        ; else if there's more than one
+  		(if (=UNKNOWN (fact-slot-value ?f has-pit)) then
+            ; if has-pit is UNKNOWN, a pit may be in location (x2,y2)
+            (printout t "A breeze in (" ?x "," ?y "), so there may be a pit in (" ?x2  "," ?y2 ")." crlf)
+            (modify ?f (has-pit MAYBE)))))
   
 (defrule evaluate-glitter 
   (task think) 
