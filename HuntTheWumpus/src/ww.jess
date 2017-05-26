@@ -281,14 +281,16 @@
 (defrule evaluate-stench
   (task think) 
   (cave (x ?x)(y ?y)(stench TRUE))
+  (wumpus(alive ?alive))
   (adj ?x ?y ?x2 ?y2)
   ; do this for every cave where has-wumpus is UNKNOWN or MAYBE
   ; so the has-wumpus MAYBE can also turn true eventually
   ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN|MAYBE))
   =>
-  ; count all neighbours that could possibly contain a wumpus
-  ; this means that has-wumpus can be UNKNOWN, MAYBE or TRUE
-  (if (=1 (count-query-results possibly-wumpus-contaminated-neighbours ?x ?y)) then
+  (if(=?alive TRUE) then
+	; count all neighbours that could possibly contain a wumpus
+  	; this means that has-wumpus can be UNKNOWN, MAYBE or TRUE
+  	(if (=1 (count-query-results possibly-wumpus-contaminated-neighbours ?x ?y)) then
         ; if there's only one, the wumpus must be in location (x2,y2)
       	(printout t "With stench in (" ?x "," ?y "), EVIDENTLY the wumpus is in (" ?x2  "," ?y2 ")." crlf)
         (modify ?f (safe FALSE)(has-wumpus TRUE))
@@ -297,7 +299,9 @@
   		(if (=UNKNOWN (fact-slot-value ?f has-wumpus)) then
             ; if has-wumpus is UNKNOWN, the wumpus may be in location (x2,y2)
             (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf)
-            (modify ?f (has-wumpus MAYBE)))))
+            (modify ?f (has-wumpus MAYBE))))
+  else
+  	(printout t "The stench of the dead the wumpus remains." crlf)))
 
 (defrule evaluate-breeze-none
   (task think) 
@@ -378,7 +382,7 @@
 
 (defrule desire-to-leave-caves 
   (task think)
-  (hunter (agent ?a)(x ?x)(y ?y)(gold ~0))
+  (hunter (agent ?a)(x ?x)(y ?y)(gold ~0)(killed_wumpus TRUE))
   (cave (x ?x)(y ?y)(has-exit TRUE))
   => 
   (printout t "Having found the gold, " ?a " want to leave the caves." crlf)
@@ -513,15 +517,13 @@
     ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
     => 
     (if (> ?arrows 0) then
-    	(printout t "Shoot action. Hunter in (" ?ax "," ?ay ") killed Wumpus in (" ?wx "," ?wy ")." crlf)
+    	(printout t ?a "in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
         (modify ?cave (has-wumpus FALSE))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
         (modify ?wumpus (alive FALSE))
     else 
-    	(printout t "Wanted to kill wumpus, but no arrows left." crlf)
-    )
-)
+    	(printout t ?a " wanted to kill the wumpus, but there are no arrows left." crlf)))
 
 (defrule go-to-adjacent-cave
   "If our desire is to goto XY and were are in an adjacent cell,
