@@ -289,6 +289,7 @@
   ; so the has-wumpus MAYBE can also turn true eventually
   ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN|MAYBE))
   =>
+  ; check if wumpus is still alive, if not -> skip this part
   (if(=?alive TRUE) then
 	; count all neighbours that could possibly contain a wumpus
   	; this means that has-wumpus can be UNKNOWN, MAYBE or TRUE
