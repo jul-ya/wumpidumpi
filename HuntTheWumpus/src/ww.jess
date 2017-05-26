@@ -12,6 +12,8 @@
 
 ;; templates -----------------------------------------------------------------
 
+; add slot for arrows to shoot
+; add slot for letting hunter know if he/she already killed the wumpus
 (deftemplate hunter "A hunter"
   (slot agent (default Xena))
   (slot x (type INTEGER))
@@ -301,7 +303,7 @@
             (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf)
             (modify ?f (has-wumpus MAYBE))))
   else
-  	(printout t "The stench of the dead the wumpus remains." crlf)))
+  	(printout t "The stench of the dead the wumpus remains in (" ?x "," ?y ")." crlf)))
 
 (defrule evaluate-breeze-none
   (task think) 
@@ -405,13 +407,18 @@
   (printout t ?a " wants to pick up the gold in (" ?x "," ?y ")." crlf)
   (assert (desire (agent ?a)(strength ?*veryhigh*)(action pickupgold))))
   
-  (defrule lust-to-kill
+; add desire to kill the wumpus
+(defrule lust-to-kill
   (task think)
+  ; get cave that has a wumpus
   (cave (x ?x)(y ?y)(has-wumpus TRUE))
+  ; get hunter and current position
   (hunter (agent ?a)(x ?x2)(y ?y2))
+  ; shoot from field next to wumpus 
   (adj ?x ?y ?x2 ?y2)
   =>
-  (printout t ?a " wants to kill the wumpus in (" ?x "," ?y ")." crlf)
+  (printout t ?a " in position (" ?x2 "," ?y2 ") wants to kill the wumpus in (" ?x "," ?y ")." crlf)
+  ; assert the desire for killing the wumpus -> set to very high
   (assert (desire (agent ?a)(strength ?*veryhigh*)(action shoot)(x ?x)(y ?y))))
 
 (defrule retract-lesser-desire
@@ -509,6 +516,7 @@
   (modify ?cave (has-gold FALSE)(glitter FALSE))
   (modify ?f2 (amount 0))) 
   
+ ; add action to kill the wumpus
  (defrule shoot
 	(task act)
     ?goal <- (goal (action shoot))  
@@ -516,13 +524,16 @@
     ?wumpus <- (wumpus (x ?wx)(y ?wy))
     ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
     => 
+    ; check if we still have arrows left
     (if (> ?arrows 0) then
     	(printout t ?a "in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
+	; kill wumpus and modify global variables for it
         (modify ?cave (has-wumpus FALSE))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
         (modify ?wumpus (alive FALSE))
     else 
+    	; if no arrows left -> we cannot kill the wumpus
     	(printout t ?a " wanted to kill the wumpus, but there are no arrows left." crlf)))
 
 (defrule go-to-adjacent-cave
