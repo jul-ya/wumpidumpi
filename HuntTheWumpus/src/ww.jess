@@ -527,7 +527,7 @@
     => 
     ; check if we still have arrows left
     (if (> ?arrows 0) then
-    	(printout t ?a "in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
+    	(printout t ?a " in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
 	; kill wumpus and modify global variables for it
         (modify ?cave (has-wumpus FALSE))
