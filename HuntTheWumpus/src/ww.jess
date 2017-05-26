@@ -17,7 +17,9 @@
   (slot x (type INTEGER))
   (slot y (type INTEGER))
   (slot gold (default 0)(type INTEGER))
-  (slot alive (default TRUE)))
+  (slot alive (default TRUE))
+  (slot arrows (default 1)(type INTEGER))
+  (slot killed_wumpus (default 0)(type INTEGER)))
 
 (deftemplate desire "a hunter's desires"
   (slot agent)
@@ -398,6 +400,15 @@
   =>
   (printout t ?a " wants to pick up the gold in (" ?x "," ?y ")." crlf)
   (assert (desire (agent ?a)(strength ?*veryhigh*)(action pickupgold))))
+  
+  (defrule lust-to-kill
+  (task think)
+  (cave (x ?x)(y ?y)(has-wumpus TRUE))
+  (hunter (agent ?a)(x ?x2)(y ?y2))
+  (adj ?x ?y ?x2 ?y2)
+  =>
+  (printout t ?a " wants to kill the wumpus in (" ?x "," ?y ")." crlf)
+  (assert (desire (agent ?a)(strength ?*veryhigh*)(action shoot)(x ?x)(y ?y))))
 
 (defrule retract-lesser-desire
   "If we have two desires for the same thing, remove the one with lesser strength"
@@ -473,7 +484,7 @@
 (defrule found-exit
   "If the hunter has gold and finds an exit, she leaves."
   (task act) 
-  (hunter (agent ?agent) (x ?x)(y ?y)(gold ~0))
+  (hunter (agent ?agent) (x ?x)(y ?y)(gold ~0)(killed_wumpus ~0))
   (exit (x ?x)(y ?y))
   =>  
  (printout t ?agent " leaves the caves." crlf)
@@ -493,6 +504,22 @@
   (modify ?f1 (gold (+ ?current ?more)))
   (modify ?cave (has-gold FALSE)(glitter FALSE))
   (modify ?f2 (amount 0))) 
+  
+  (defrule shoot
+	(task act)
+    ?goal <- (goal (action shoot))  
+    ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE))
+    ?wumpus <- (wumpus (x ?wx)(y ?wy))
+    ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
+    => 
+    (if (> ?arrows 0) then
+    	(printout t "Shoot action. Wumpus in (" ?ax "," ?ay "). " ?wx","?wy" "?killed"" crlf)
+    	(retract ?goal) 
+        (modify ?cave (has-wumpus FALSE))
+        (modify ?agent (killed_wumpus TRUE)(arrows -1))
+    else 
+    	(printout t "Wanted to kill wumpus, but no arrows left." crlf)
+    ))
 
 (defrule go-to-adjacent-cave
   "If our desire is to goto XY and were are in an adjacent cell,
