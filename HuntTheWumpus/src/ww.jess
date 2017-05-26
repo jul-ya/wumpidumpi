@@ -271,14 +271,23 @@
   (printout t "No stench in (" ?x "," ?y ") means no wumpus in (" ?x2 ","  ?y2 ")." crlf)
   (modify ?f (has-wumpus FALSE)))
 
+(defquery possibly-wumpus-contaminated-neighbours
+    (declare (variables ?gx ?gy))
+    (adj ?gx ?gy ?nx ?ny)
+    (cave (x ?nx)(y ?ny)(has-wumpus ~FALSE)))
+
 (defrule evaluate-stench
   (task think) 
-  (cave (x ?x)(y ?y)(stench TRUE))
-  (adj ?x ?y ?x2 ?y2)
+  ?cave <- (adj ?x ?y ?x2 ?y2)
   ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN))
   =>
-  (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf)
-  (modify ?f (has-wumpus MAYBE)))
+  (if (=1 (count-query-results possibly-wumpus-contaminated-neighbours ?x ?y)) then
+        (modify ?f (safe FALSE)(has-wumpus TRUE)
+      	(printout t "With stench in (" ?x "," ?y "), evidently the wumpus is in (" ?x2  "," ?y2 ")." crlf))
+	else
+  		(if (=UNKNOWN (fact-slot-value ?f has-wumpus)) then
+            (modify ?f (has-wumpus MAYBE))
+            (printout t "With stench in (" ?x "," ?y "), maybe the wumpus is in (" ?x2  "," ?y2 ")." crlf))))
 
 (defrule evaluate-breeze-none
   (task think) 

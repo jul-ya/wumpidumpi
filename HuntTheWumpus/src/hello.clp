@@ -1,4 +1,4 @@
 (batch ww.jess)
-(batch cave3.jess)
+(batch cave0.jess)
 (reset)
 (run)
