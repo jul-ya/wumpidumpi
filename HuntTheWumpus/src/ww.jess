@@ -570,19 +570,20 @@
   => 
   ; calculate manhattan distances from 1 to 3 and 2 to 3
   ; if 2 to 3 is smaller go to the adjacent safe cave
-  (bind ?currdist (abs(+(- ?x3 ?x1)(- ?y3 ?y1))))
-  (bind ?newdist (abs(+(- ?x3 ?x2)(- ?y3 ?y2))))
-  (if(< ?newdist ?currdist) then
+  (bind ?currdist (+(abs(- ?x3 ?x1))(abs(- ?y3 ?y1))))
+  (bind ?newdist (+(abs(- ?x3 ?x2))(abs(- ?y3 ?y2))))
+  (printout t "New distance: " ?newdist " Current distance: " ?currdist crlf)
+  (if(< ?newdist ?currdist) then    
         (printout t ?agent " goes to (" ?x2 "," ?y2 ") trying to get to (" ?x3 "," ?y3 ")." crlf)
   		(modify ?hunter (x ?x2)(y ?y2))
   else 
+  (printout t "BACKTRACKING" crlf)
   ; else if 2 to 3 is bigger or the same as 1 to 3
   ; backtrack until reaching the exit cave
   (while (=(> ?x1 0) TRUE)
   	(bind ?result (run-query* get-cave ?x1 ?y1))
   	(while (?result next)
     	(bind ?p (?result getObject cave))
-    	;(printout t ?p.fromx " " ?p.fromy crlf)
     	(bind ?fx ?p.fromx)
     	(bind ?fy ?p.fromy))
   	(if(or(< ?fx 1)(< ?fy 1)) then (break))
