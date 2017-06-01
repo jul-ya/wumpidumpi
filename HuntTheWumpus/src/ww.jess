@@ -393,7 +393,7 @@
 
 (defrule add-desire-to-head-for-the-exit
   (task think) 
-  (hunter (agent ?agent) (x ?x)(y ?y)(gold ~0))
+  (hunter (agent ?agent) (x ?x)(y ?y)(gold ~0)(killed_wumpus TRUE))
   (cave (x ?x)(y ?y)(fromx ?fx)(fromy ?fy))
   (test (> ?fx 0))
   =>  
@@ -555,19 +555,22 @@
   (if (not ?v) then (modify ?target (fromx ?x2)(fromy ?y2))))
 
 (defrule move-toward-distant-cave
-
   "The hunter is in X1Y1 and intends to go to distant X3Y3.  Hunter
   goes to adjacent safe cave X2Y2 which is closer to X3Y3."
   (task act)
   ?hunter <-(hunter (agent ?agent) (x ?x1)(y ?y1))
   (goal (action go) (x ?x3)(y ?y3))
   (not (adj ?x1 ?y1 ?x3 ?y3))
-  (cave (x ?x2)(y ?y2)(safe TRUE))
+  ?cave <- (cave (fromx ?x2)(fromy ?y2));(safe TRUE))
   (adj ?x1 ?y1 ?x2 ?y2)
-  (test (between ?x1 ?y1 ?x2 ?y2 ?x3 ?y3))
+  ;(test (between ?x1 ?y1 ?x2 ?y2 ?x3 ?y3))
   =>
+  (while (=(> ?x2 0) TRUE)
   (printout t ?agent " goes to (" ?x2 "," ?y2 ") trying to get to (" ?x3 "," ?y3 ")." crlf)
-  (modify ?hunter (x ?x2)(y ?y2)))
+  (modify ?hunter (x ?x2)(y ?y2))
+  ;(modify ?cave (x ?x2)(y ?y2)(fromx ?fx)(fromy ?fy))
+  ;(bind ?x2 ?fx)
+        ))
 
 (defrule delete-desires
   "retracts any desire facts in the database" 
