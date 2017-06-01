@@ -556,7 +556,7 @@
 
 (defquery get-cave
     (declare (variables ?gx ?gy))
-    ?cave <- (cave (x ?gx)(y ?gy)))
+    ?cave <- (cave (x ?gx)(y ?gy)(safe TRUE)))
 
 (defrule move-toward-distant-cave
   "The hunter is in X1Y1 and intends to go to distant X3Y3.  Hunter
