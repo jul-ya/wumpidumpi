@@ -323,7 +323,7 @@
     (cave (x ?nx)(y ?ny)(has-pit ~FALSE)))
 
 (defrule evaluate-breeze
-  (task think) 
+  (task think)
   (cave (x ?x)(y ?y)(breeze TRUE))
   ; do this for every cave where has-pit is UNKNOWN or MAYBE
   ; so the has-pit MAYBE can also turn true eventually
@@ -526,7 +526,7 @@
  (defrule shoot
 	(task act)
     ?goal <- (goal (action shoot))  
-    ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE))
+    ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE)(has-pit ?pit))
     ?wumpus <- (wumpus (x ?wx)(y ?wy))
     ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
     => 
@@ -536,34 +536,46 @@
     	(retract ?goal) 
 	; kill wumpus and modify global variables for it
         (modify ?cave (has-wumpus FALSE))
+        (if (=?pit ~TRUE) then (modify ?cave (safe TRUE)) else (modify ?cave (safe UNKNOWN)))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
         (modify ?wumpus (alive FALSE))
     else 
     	; if no arrows left -> we cannot kill the wumpus
     	(printout t ?a " wanted to kill the wumpus, but there are no arrows left." crlf)))
 
-(defrule go-to-adjacent-cave
+(defrule go-to-adjacent-safe-cave
   "If our desire is to goto XY and were are in an adjacent cell,
    do it and remove the desire"
   (task act)
   ?goal <- (goal (action go) (x ?x)(y ?y))
   ?hunter <-(hunter (agent ?agent) (x ?x2)(y ?y2))
   (adj ?x ?y ?x2 ?y2)
-  ?target <- (cave (x ?x)(y ?y)(visited ?v))
+  ?target <- (cave (x ?x)(y ?y)(visited ?v)(safe TRUE))
   =>
   (printout t ?agent " goes to (" ?x "," ?y ")." crlf)
   (retract ?goal) 
   (modify ?hunter (x ?x)(y ?y))
   (if (not ?v) then (modify ?target (fromx ?x2)(fromy ?y2))))
 
+(defrule go-to-adjacent-unsafe-cave
+  "If our desire is to goto XY and were are in an adjacent cell,
+   stop and think before moving there"
+  (task act)
+  ?goal <- (goal (action go) (x ?x)(y ?y))
+  ?hunter <-(hunter (agent ?agent) (x ?x2)(y ?y2))
+  (adj ?x ?y ?x2 ?y2)
+  ?target <- (cave (x ?x)(y ?y)(visited ?v)(safe ~TRUE))
+  =>
+  (printout t ?agent " stops before (" ?x "," ?y ")." crlf))
+
 (defquery get-current-cave
     (declare (variables ?gx ?gy))
-    ?cave <- (cave (x ?gx)(y ?gy)(safe TRUE)))
+    ?cave <- (cave (x ?gx)(y ?gy)(safe ~FALSE)))
 
 (defquery get-adjacent-cave
     (declare (variables ?gx ?gy))
     (adj ?gx ?gy ?nx ?ny)
-    ?cave <- (cave (x ?nx)(y ?ny)(safe TRUE)))
+    ?cave <- (cave (x ?nx)(y ?ny)(safe ~FALSE)))
 
 (defrule move-toward-distant-cave
   "The hunter is in X1Y1 and intends to go to distant X3Y3."
@@ -583,6 +595,7 @@
     (bind ?p (?result getObject cave))
     (bind ?x ?p.x)
     (bind ?y ?p.y)
+    (bind ?safe ?p.safe)
     ; calculate manhattan distance from this cave to goal
     (bind ?newdist (+(abs(- ?x3 ?x))(abs(- ?y3 ?y))))
     ; if a cave was found that the hunter has not just visited
