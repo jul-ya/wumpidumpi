@@ -21,7 +21,9 @@
   (slot gold (default 0)(type INTEGER))
   (slot alive (default TRUE))
   (slot arrows (default 1)(type INTEGER))
-  (slot killed_wumpus (default FALSE)))
+  (slot killed_wumpus (default FALSE))
+  (slot last_x (default 0)(type INTEGER))
+  (slot last_y (default 0)(type INTEGER)))
 
 (deftemplate desire "a hunter's desires"
   (slot agent)
@@ -554,43 +556,58 @@
   (modify ?hunter (x ?x)(y ?y))
   (if (not ?v) then (modify ?target (fromx ?x2)(fromy ?y2))))
 
-(defquery get-cave
+(defquery get-current-cave
     (declare (variables ?gx ?gy))
     ?cave <- (cave (x ?gx)(y ?gy)(safe TRUE)))
 
+(defquery get-adjacent-cave
+    (declare (variables ?gx ?gy))
+    (adj ?gx ?gy ?nx ?ny)
+    ?cave <- (cave (x ?nx)(y ?ny)(safe TRUE)))
+
 (defrule move-toward-distant-cave
-  "The hunter is in X1Y1 and intends to go to distant X3Y3.  Hunter
-  goes to adjacent safe cave X2Y2 which is closer to X3Y3."
+  "The hunter is in X1Y1 and intends to go to distant X3Y3."
   (task act)
-  ?hunter <-(hunter (agent ?agent) (x ?x1)(y ?y1))
+  ?hunter <-(hunter (agent ?agent) (x ?x1)(y ?y1)(last_x ?lx)(last_y ?ly))
   (goal (action go) (x ?x3)(y ?y3))
   (not (adj ?x1 ?y1 ?x3 ?y3))
-  (cave (x ?x2)(y ?y2)(safe TRUE))
-  (adj ?x1 ?y1 ?x2 ?y2)
   => 
-  ; calculate manhattan distances from 1 to 3 and 2 to 3
-  ; if 2 to 3 is smaller go to the adjacent safe cave
+  ; calculate manhattan distance from current location to goal
   (bind ?currdist (+(abs(- ?x3 ?x1))(abs(- ?y3 ?y1))))
-  (bind ?newdist (+(abs(- ?x3 ?x2))(abs(- ?y3 ?y2))))
-  (printout t "New distance: " ?newdist " Current distance: " ?currdist crlf)
-  (if(< ?newdist ?currdist) then    
-        (printout t ?agent " goes to (" ?x2 "," ?y2 ") trying to get to (" ?x3 "," ?y3 ")." crlf)
-  		(modify ?hunter (x ?x2)(y ?y2))
-  else 
-  (printout t "BACKTRACKING" crlf)
-  ; else if 2 to 3 is bigger or the same as 1 to 3
-  ; backtrack until reaching the exit cave
-  (while (=(> ?x1 0) TRUE)
-  	(bind ?result (run-query* get-cave ?x1 ?y1))
-  	(while (?result next)
-    	(bind ?p (?result getObject cave))
-    	(bind ?fx ?p.fromx)
-    	(bind ?fy ?p.fromy))
-  	(if(or(< ?fx 1)(< ?fy 1)) then (break))
-  	(printout t ?agent " goes to (" ?fx "," ?fy ") trying to get to (" ?x3 "," ?y3 ")." crlf)
-  	(modify ?hunter (x ?fx)(y ?fy))
-  	(bind ?x1 ?fx)
-  	(bind ?y1 ?fy))))
+  (bind ?moved FALSE)
+    
+  ; iterate all caves adjacent to find one that is nearer
+  ; and that the hunter hasn't seen just before
+  (bind ?result (run-query* get-adjacent-cave ?x1 ?y1))
+  (while (?result next)
+    (bind ?p (?result getObject cave))
+    (bind ?x ?p.x)
+    (bind ?y ?p.y)
+    ; calculate manhattan distance from this cave to goal
+    (bind ?newdist (+(abs(- ?x3 ?x))(abs(- ?y3 ?y))))
+    ; if a cave was found that the hunter has not just visited
+    ; and it is also nearer to the goal by manhattan distance
+    (if(=(and(or(= ?lx ?x)(= ?ly ?y))(>= ?newdist ?currdist)) FALSE) then
+        ; move and set moved true
+    	(printout t ?agent " who has seen (" ?x1 "," ?y1 ") goes to (" ?x "," ?y ") trying to get to (" ?x3 "," ?y3 ")." crlf)
+  		(modify ?hunter (x ?x)(y ?y)(last_x ?x1)(last_y ?y1))
+    	(bind ?moved TRUE)
+     	(break)))
+    
+  ; if no move happened at all already we need to backtrack
+  ; our way until reaching the exit cave to start from there again
+  (if (=?moved FALSE) then
+  	(while (> ?x1 0)
+  		(bind ?result (run-query* get-current-cave ?x1 ?y1))
+  		(while (?result next)
+    		(bind ?p (?result getObject cave))
+    		(bind ?fx ?p.fromx)
+    		(bind ?fy ?p.fromy))
+  		(if(or(< ?fx 1)(< ?fy 1)) then (break))
+  		(printout t ?agent " who has seen (" ?x1 "," ?y1 ") goes to (" ?fx "," ?fy ") trying to get to (" ?x3 "," ?y3 ")." crlf)
+  		(modify ?hunter (x ?fx)(y ?fy)(last_x ?x1)(last_y ?y1))
+  		(bind ?x1 ?fx)
+  		(bind ?y1 ?fy))))
 
 (defrule delete-desires
   "retracts any desire facts in the database" 
