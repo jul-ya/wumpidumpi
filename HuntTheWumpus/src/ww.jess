@@ -535,7 +535,7 @@
     	(printout t ?a " in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
 	; kill wumpus and modify global variables for it
-        (modify ?cave (has-wumpus FALSE))
+        (modify ?cave (has-wumpus FALSE)(safe UNKNOWN))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
         (modify ?wumpus (alive FALSE))
     else 
@@ -558,7 +558,7 @@
 
 (defquery get-current-cave
     (declare (variables ?gx ?gy))
-    ?cave <- (cave (x ?gx)(y ?gy)(safe TRUE)))
+    ?cave <- (cave (x ?gx)(y ?gy)))
 
 (defquery get-adjacent-cave
     (declare (variables ?gx ?gy))
@@ -573,7 +573,12 @@
   (not (adj ?x1 ?y1 ?x3 ?y3))
   => 
   ; calculate manhattan distance from current location to goal
-  (bind ?currdist (+(abs(- ?x3 ?x1))(abs(- ?y3 ?y1))))
+  (bind ?currdist (+(abs(- ?x1 ?x3))(abs(- ?y1 ?y3))))
+    
+  ; bind helper variables
+  (bind ?newdist 10000)
+  (bind ?x 0)
+  (bind ?y 0)
   (bind ?moved FALSE)
     
   ; iterate all caves adjacent to find one that is nearer
@@ -581,18 +586,25 @@
   (bind ?result (run-query* get-adjacent-cave ?x1 ?y1))
   (while (?result next)
     (bind ?p (?result getObject cave))
-    (bind ?x ?p.x)
-    (bind ?y ?p.y)
     ; calculate manhattan distance from this cave to goal
-    (bind ?newdist (+(abs(- ?x3 ?x))(abs(- ?y3 ?y))))
-    ; if a cave was found that the hunter has not just visited
-    ; and it is also nearer to the goal by manhattan distance
-    (if(=(and(or(= ?lx ?x)(= ?ly ?y))(>= ?newdist ?currdist)) FALSE) then
-        ; move and set moved true
-    	(printout t ?agent " who has seen (" ?x1 "," ?y1 ") goes to (" ?x "," ?y ") trying to get to (" ?x3 "," ?y3 ")." crlf)
-  		(modify ?hunter (x ?x)(y ?y)(last_x ?x1)(last_y ?y1))
-    	(bind ?moved TRUE)
-     	(break)))
+    (bind ?newestdist (+(abs(- ?p.x ?x3))(abs(- ?p.y ?y3))))
+        
+    ; if distance is smaller than the current one
+    (if(< ?newestdist ?newdist) then
+        ; and the cave is not the last one that was visited
+    	(if (=(and(= ?lx ?p.x)(= ?ly ?p.y)) FALSE) then
+            ; bind new distance and cave x and y
+			(bind ?x ?p.x)
+      		(bind ?y ?p.y)
+       		(bind ?newdist ?newestdist))))
+
+  ; if a cave was found that the hunter has not just visited
+  ; and it is also nearer to the goal by manhattan distance
+  (if (< ?newdist ?currdist) then
+	; move and set moved true
+	(printout t ?agent " goes to (" ?x "," ?y ") trying to get to (" ?x3 "," ?y3 ")." crlf)
+	(modify ?hunter (x ?x)(y ?y)(last_x ?x1)(last_y ?y1))
+	(bind ?moved TRUE))
     
   ; if no move happened at all already we need to backtrack
   ; our way until reaching the exit cave to start from there again
@@ -604,7 +616,7 @@
     		(bind ?fx ?p.fromx)
     		(bind ?fy ?p.fromy))
   		(if(or(< ?fx 1)(< ?fy 1)) then (break))
-  		(printout t ?agent " who has seen (" ?x1 "," ?y1 ") goes to (" ?fx "," ?fy ") trying to get to (" ?x3 "," ?y3 ")." crlf)
+  		(printout t ?agent " goes to (" ?fx "," ?fy ") trying to get to (" ?x3 "," ?y3 ")." crlf)
   		(modify ?hunter (x ?fx)(y ?fy)(last_x ?x1)(last_y ?y1))
   		(bind ?x1 ?fx)
   		(bind ?y1 ?fy))))
