@@ -526,7 +526,7 @@
  (defrule shoot
 	(task act)
     ?goal <- (goal (action shoot))  
-    ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE))
+    ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE)(has-pit ?pit))
     ?wumpus <- (wumpus (x ?wx)(y ?wy))
     ?agent <- (hunter (agent ?a)(x ?ax)(y ?ay)(killed_wumpus ?killed)(arrows ?arrows))
     => 
@@ -535,7 +535,9 @@
     	(printout t ?a " in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
 	; kill wumpus and modify global variables for it
-        (modify ?cave (has-wumpus FALSE)(safe UNKNOWN))
+        (modify ?cave (has-wumpus FALSE))
+        (if(=?pit UNKNOWN|MAYBE) then (modify ?cave (safe UNKNOWN)))
+        (if(=?pit FALSE) then (modify ?cave (safe TRUE)))
         (modify ?agent (killed_wumpus TRUE)(arrows -1))
         (modify ?wumpus (alive FALSE))
     else 
