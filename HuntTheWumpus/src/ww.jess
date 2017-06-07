@@ -14,6 +14,7 @@
 
 ; add slot for arrows to shoot
 ; add slot for letting hunter know if he/she already killed the wumpus
+; add slots for the hunter's last x and y position for pathfinding
 (deftemplate hunter "A hunter"
   (slot agent (default Xena))
   (slot x (type INTEGER))
@@ -109,7 +110,6 @@
   => 
   (printout t "GENESIS..." crlf)
   (assert (task genesis)))
-
 
 
 ;; GENESIS rules  --------------------------------------------------------------
@@ -277,11 +277,15 @@
   (printout t "No stench in (" ?x "," ?y ") means no wumpus in (" ?x2 ","  ?y2 ")." crlf)
   (modify ?f (has-wumpus FALSE)))
 
+; query all neighbouring caves of the given cave
+; that could possibly contain a wumpus
 (defquery possibly-wumpus-contaminated-neighbours
     (declare (variables ?gx ?gy))
     (adj ?gx ?gy ?nx ?ny)
     (cave (x ?nx)(y ?ny)(has-wumpus ~FALSE)))
 
+; evaluate a cave where stench is TRUE
+; and mark the wumpus cave or all possible ones
 (defrule evaluate-stench
   (task think) 
   (cave (x ?x)(y ?y)(stench TRUE))
@@ -317,11 +321,15 @@
   (printout t "There's no breeze in (" ?x "," ?y ") so there's no pit in (" ?x2  "," ?y2 ")." crlf)
   (modify ?f (has-pit FALSE)))
 
+; query all neighbouring caves of the given cave
+; that could possibly contain a pit
 (defquery possibly-pit-packed-neighbours
     (declare (variables ?gx ?gy))
     (adj ?gx ?gy ?nx ?ny)
     (cave (x ?nx)(y ?ny)(has-pit ~FALSE)))
 
+; evaluate a cave where breeze is TRUE
+; and mark the pit cave or all possible ones
 (defrule evaluate-breeze
   (task think) 
   (cave (x ?x)(y ?y)(breeze TRUE))
@@ -385,14 +393,16 @@
 
 ;; setting desires ...
 
+; if gold found & wumpus killed, leave caves
 (defrule desire-to-leave-caves 
   (task think)
   (hunter (agent ?a)(x ?x)(y ?y)(gold ~0)(killed_wumpus TRUE))
   (cave (x ?x)(y ?y)(has-exit TRUE))
   => 
-  (printout t "Having found the gold, " ?a " want to leave the caves." crlf)
+  (printout t "Having found the gold and killed the wumpus, " ?a " want to leave the caves." crlf)
   (assert (desire (agent ?a)(strength ?*veryhigh*)(action leavecaves))))
 
+; if gold found & wumpus killed, head for exit
 (defrule add-desire-to-head-for-the-exit
   (task think) 
   (hunter (agent ?agent) (x ?x)(y ?y)(gold ~0)(killed_wumpus TRUE))
@@ -410,7 +420,7 @@
   (printout t ?a " wants to pick up the gold in (" ?x "," ?y ")." crlf)
   (assert (desire (agent ?a)(strength ?*veryhigh*)(action pickupgold))))
   
-; add desire to kill the wumpus
+; added desire to kill the wumpus
 (defrule lust-to-kill
   (task think)
   ; get cave that has a wumpus
@@ -479,6 +489,8 @@
 ;; Planning our action is just simply picking the desire to realize
 ;; and asserting an appropriate goal.
 
+; choose the strongest desire and also leave out
+; the ones that lead to caves where safe is FALSE
 (defrule choose-desire 
   "pick the best desire available for a given action. note that we
     will only promote one desire to be a goal at a time."
@@ -522,8 +534,8 @@
   (modify ?cave (has-gold FALSE)(glitter FALSE))
   (modify ?f2 (amount 0))) 
   
- ; add action to kill the wumpus
- (defrule shoot
+; added action to kill the wumpus
+(defrule shoot
 	(task act)
     ?goal <- (goal (action shoot))  
     ?cave <- (cave (x ?x)(y ?y)(has-wumpus TRUE)(has-pit ?pit))
@@ -534,7 +546,7 @@
     (if (> ?arrows 0) then
     	(printout t ?a " in (" ?ax "," ?ay ") killed the wumpus in (" ?wx "," ?wy ")." crlf)
     	(retract ?goal) 
-	; kill wumpus and modify global variables for it
+		; kill wumpus and modify global variables for it
         (modify ?cave (has-wumpus FALSE))
         (if(=?pit UNKNOWN|MAYBE) then (modify ?cave (safe UNKNOWN)))
         (if(=?pit FALSE) then (modify ?cave (safe TRUE)))
@@ -558,15 +570,18 @@
   (modify ?hunter (x ?x)(y ?y))
   (if (not ?v) then (modify ?target (fromx ?x2)(fromy ?y2))))
 
+; get the current cave
 (defquery get-current-cave
     (declare (variables ?gx ?gy))
     ?cave <- (cave (x ?gx)(y ?gy)))
 
+; query all neighbouring caves
 (defquery get-adjacent-cave
     (declare (variables ?gx ?gy))
     (adj ?gx ?gy ?nx ?ny)
     ?cave <- (cave (x ?nx)(y ?ny)(safe TRUE)))
 
+; find a path to get to distant caves
 (defrule move-toward-distant-cave
   "The hunter is in X1Y1 and intends to go to distant X3Y3."
   (task act)
