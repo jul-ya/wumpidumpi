@@ -291,7 +291,7 @@
   (cave (x ?x)(y ?y)(stench TRUE))
   (wumpus(alive ?alive))
   (adj ?x ?y ?x2 ?y2)
-  ; do this for every cave where has-wumpus is UNKNOWN or MAYBE
+  ; at least one adjacent cave must have has-wumpus is UNKNOWN or MAYBE
   ; so the has-wumpus MAYBE can also turn true eventually
   ?f <- (cave (x ?x2)(y ?y2)(has-wumpus UNKNOWN|MAYBE))
   =>
@@ -333,7 +333,7 @@
 (defrule evaluate-breeze
   (task think) 
   (cave (x ?x)(y ?y)(breeze TRUE))
-  ; do this for every cave where has-pit is UNKNOWN or MAYBE
+  ; at least one adjacent cave must have has-pit is UNKNOWN or MAYBE
   ; so the has-pit MAYBE can also turn true eventually
   ?f <- (cave (x ?x2)(y ?y2)(has-pit UNKNOWN|MAYBE))
   (adj ?x ?y ?x2 ?y2)
